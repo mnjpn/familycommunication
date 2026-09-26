@@ -4,9 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>親子れんらく帳</title>
-  <!-- Firebase (公式ライブラリ) -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <style>
     :root {
       --bg-color: #f0f2f5;
@@ -113,6 +110,7 @@
     .btn-send {
       width: 40px; height: 40px; border-radius: 50%; background-color: var(--primary);
       color: white; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer;
+      font-size: 16px;
     }
   </style>
 </head>
@@ -148,13 +146,8 @@
 </div>
 
 <script>
-  // 書き込み・読み込みを完全開放した専用リアルタイムデータベース
-  const firebaseConfig = {
-    databaseURL: "https://family-chat-public-default-rtdb.firebaseio.com/"
-  };
-
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.database().ref("family_messages");
+  // 外部ライブラリを一切使わない標準通信API
+  const DB_URL = "https://family-chat-public-default-rtdb.firebaseio.com/messages.json";
 
   const DEFAULT_PIN = "1234";
   let currentRole = localStorage.getItem('family_chat_role') || 'child';
@@ -169,14 +162,14 @@
   const sendBtn = document.getElementById('sendBtn');
   const statusBar = document.getElementById('statusBar');
 
-  // 自動ログイン（一度ログインすれば保持されます）
+  // 自動ログイン（パスワードは1度入れたらリロードしても聞かれません）
   if (localStorage.getItem('family_chat_auth') === 'true') {
     loginScreen.style.display = 'none';
     initChat();
   }
 
-  loginBtn.addEventListener('click', handleLogin);
-  pinInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleLogin(); });
+  loginBtn.onclick = handleLogin;
+  pinInput.onkeypress = (e) => { if (e.key === 'Enter') handleLogin(); };
 
   function handleLogin() {
     if (pinInput.value.trim() === DEFAULT_PIN) {
@@ -193,41 +186,42 @@
     roleParent.className = currentRole === 'parent' ? 'role-btn active-parent' : 'role-btn';
     roleChild.className = currentRole === 'child' ? 'role-btn active-child' : 'role-btn';
     localStorage.setItem('family_chat_role', currentRole);
-    renderAllMessages();
+    fetchMessages();
   }
 
-  roleParent.addEventListener('click', () => { currentRole = 'parent'; updateRoleUI(); });
-  roleChild.addEventListener('click', () => { currentRole = 'child'; updateRoleUI(); });
-
-  let cachedData = null;
+  roleParent.onclick = () => { currentRole = 'parent'; updateRoleUI(); };
+  roleChild.onclick = () => { currentRole = 'child'; updateRoleUI(); };
 
   function initChat() {
     updateRoleUI();
-
-    // リアルタイムリスナー（保存されたデータが瞬時に届きます）
-    db.on('value', (snapshot) => {
-      cachedData = snapshot.val();
-      renderAllMessages();
-      statusBar.textContent = 'リアルタイム接続中 (' + new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) + ')';
-    }, (error) => {
-      statusBar.textContent = '接続エラー';
-    });
+    fetchMessages();
+    setInterval(fetchMessages, 3000); // 3秒ごとに自動同期
   }
 
-  function renderAllMessages() {
-    messageList.innerHTML = '';
-    if (cachedData) {
-      Object.values(cachedData).forEach(msg => {
-        renderSingleMessage(msg);
-      });
+  // メッセージ取得
+  async function fetchMessages() {
+    try {
+      const res = await fetch(DB_URL);
+      if (res.ok) {
+        const data = await res.json();
+        messageList.innerHTML = '';
+        if (data) {
+          Object.values(data).forEach(msg => {
+            renderSingleMessage(msg);
+          });
+        }
+        statusBar.textContent = '同期完了 (' + new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) + ')';
+      }
+    } catch (e) {
+      statusBar.textContent = '接続中...';
     }
   }
 
   // メッセージ送信
-  sendBtn.addEventListener('click', sendMessage);
-  msgInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
+  sendBtn.onclick = sendMessage;
+  msgInput.onkeypress = (e) => { if (e.key === 'Enter') sendMessage(); };
 
-  function sendMessage() {
+  async function sendMessage() {
     const text = msgInput.value.trim();
     if (!text) return;
 
@@ -239,14 +233,24 @@
       timestamp: Date.now()
     };
 
-    // Firebaseへ直接書き込み（完全に書き込み可能です）
-    db.push(newMsg).then(() => {
-      msgInput.value = '';
+    try {
+      const res = await fetch(DB_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newMsg)
+      });
+
+      if (res.ok) {
+        msgInput.value = '';
+        fetchMessages();
+      } else {
+        alert('送信に失敗しました。');
+      }
+    } catch (e) {
+      alert('通信エラーが発生しました。');
+    } finally {
       sendBtn.disabled = false;
-    }).catch((err) => {
-      alert('送信エラーが発生しました: ' + err.message);
-      sendBtn.disabled = false;
-    });
+    }
   }
 
   function renderSingleMessage(msg) {
