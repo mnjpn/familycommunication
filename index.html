@@ -4,327 +4,262 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>親子れんらく帳</title>
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- FontAwesome Icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <!-- Google Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700&display=swap" rel="stylesheet">
+  <!-- Firebase (公式ライブラリ) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <style>
+    :root {
+      --bg-color: #f0f2f5;
+      --card-bg: #ffffff;
+      --primary: #4f46e5;
+      --parent-color: #ec4899;
+      --child-color: #3b82f6;
+      --text-main: #1f2937;
+      --text-sub: #6b7280;
+      --border-color: #e5e7eb;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+
     body {
-      font-family: 'Zen Maru Gothic', sans-serif;
-      background-color: #f1f5f9;
-      -webkit-tap-highlight-color: transparent;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      display: flex;
+      justify-content: center;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
     }
-    /* Hide scrollbar for Chrome, Safari and Opera */
-    .no-scrollbar::-webkit-scrollbar {
-      display: none;
+
+    #app {
+      width: 100%;
+      max-width: 500px;
+      height: 100%;
+      background-color: var(--card-bg);
+      display: flex;
+      flex-direction: column;
+      position: relative;
     }
-    /* Hide scrollbar for IE, Edge and Firefox */
-    .no-scrollbar {
-      -ms-overflow-style: none;  /* IE and Edge */
-      scrollbar-width: none;  /* Firefox */
+
+    .login-overlay {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background-color: var(--card-bg);
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 24px;
+    }
+
+    .login-box { width: 100%; max-width: 320px; text-align: center; }
+
+    .pin-input {
+      width: 100%; padding: 14px; font-size: 18px; text-align: center;
+      letter-spacing: 4px; border: 2px solid var(--border-color);
+      border-radius: 12px; margin-bottom: 16px; outline: none;
+    }
+
+    .btn-login {
+      width: 100%; padding: 14px; background-color: var(--primary);
+      color: white; border: none; border-radius: 12px; font-size: 16px;
+      font-weight: 600; cursor: pointer;
+    }
+
+    header {
+      padding: 12px 16px; border-bottom: 1px solid var(--border-color);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+
+    .role-selector { display: flex; background: #f3f4f6; padding: 3px; border-radius: 20px; }
+    .role-btn {
+      padding: 6px 14px; font-size: 12px; font-weight: 600; border: none;
+      border-radius: 16px; background: transparent; color: var(--text-sub); cursor: pointer;
+    }
+    .role-btn.active-parent { background: var(--parent-color); color: white; }
+    .role-btn.active-child { background: var(--child-color); color: white; }
+
+    .status-bar { font-size: 10px; text-align: center; color: var(--text-sub); padding: 4px; background: #f3f4f6; }
+
+    .message-list {
+      flex: 1; padding: 16px; overflow-y: auto; display: flex;
+      flex-direction: column; gap: 12px; background: #f9fafb;
+    }
+
+    .msg-group { display: flex; flex-direction: column; max-width: 80%; }
+    .msg-group.self { align-self: flex-end; align-items: flex-end; }
+    .msg-group.other { align-self: flex-start; align-items: flex-start; }
+
+    .sender-label { font-size: 11px; color: var(--text-sub); margin-bottom: 4px; }
+    .bubble {
+      padding: 10px 14px; border-radius: 16px; font-size: 14px; line-height: 1.4;
+      word-break: break-word;
+    }
+    .msg-group.self .bubble { background-color: var(--primary); color: white; border-bottom-right-radius: 4px; }
+    .msg-group.other .bubble { background-color: #ffffff; color: var(--text-main); border: 1px solid var(--border-color); border-bottom-left-radius: 4px; }
+    .msg-time { font-size: 10px; color: #9ca3af; margin-top: 4px; }
+
+    footer {
+      padding: 12px 16px; background-color: #ffffff; border-top: 1px solid var(--border-color);
+      display: flex; gap: 8px; align-items: center;
+    }
+
+    .input-msg {
+      flex: 1; padding: 12px 16px; border: 1px solid var(--border-color);
+      border-radius: 24px; font-size: 14px; outline: none; background-color: #f9fafb;
+    }
+
+    .btn-send {
+      width: 40px; height: 40px; border-radius: 50%; background-color: var(--primary);
+      color: white; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer;
     }
   </style>
 </head>
-<body class="h-screen w-screen flex justify-center items-center overflow-hidden">
+<body>
 
-  <!-- App Wrapper -->
-  <div id="app" class="w-full max-w-md h-full bg-white flex flex-col relative shadow-xl overflow-hidden">
-
-    <!-- 1. Passcode / Login Screen -->
-    <div id="loginOverlay" class="absolute inset-0 bg-slate-900/40 backdrop-blur-md z-50 flex items-center justify-center p-6">
-      <div class="bg-white w-full max-w-xs rounded-3xl p-6 shadow-2xl text-center border border-slate-100">
-        <div class="w-16 h-16 bg-indigo-100 rounded-2xl flex items-center justify-center mx-auto mb-4 text-indigo-600 text-2xl shadow-inner">
-          <i class="fa-solid fa-lock"></i>
-        </div>
-        <h2 class="text-xl font-bold text-slate-800 mb-1">親子れんらく帳</h2>
-        <p class="text-xs text-slate-500 mb-6">あいことばを入力してね</p>
-
-        <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-4">
-          <input type="password" id="pinInput" maxlength="8" pattern="[0-9]*" inputmode="numeric" placeholder="あいことば" required
-            class="w-full px-4 py-3 text-center text-xl tracking-widest rounded-2xl border-2 border-slate-200 focus:border-indigo-500 focus:outline-none transition">
-          <button type="submit" 
-            class="w-full bg-indigo-500 hover:bg-indigo-600 active:bg-indigo-700 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-indigo-100 transition">
-            入る
-          </button>
-        </form>
-        <p id="loginError" class="text-xs text-rose-500 mt-3 hidden font-bold">あいことばがちがいます</p>
-        <p class="text-[11px] text-slate-400 mt-4">※ しょきあいことば: <span class="font-bold">1234</span></p>
-      </div>
+<div id="app">
+  <!-- ログイン画面 -->
+  <div id="loginScreen" class="login-overlay">
+    <div class="login-box">
+      <h2 style="margin-bottom:8px;">📌 親子れんらく帳</h2>
+      <p style="font-size:12px; color:#666; margin-bottom:20px;">合言葉を入力してください</p>
+      <input type="password" id="pinInput" class="pin-input" placeholder="••••" maxlength="8">
+      <button id="loginBtn" class="btn-login">入る</button>
     </div>
-
-    <!-- 2. Header -->
-    <header class="bg-white border-b border-slate-100 py-3 px-4 flex items-center justify-between shrink-0 z-10 shadow-sm">
-      <div class="flex items-center space-x-2.5">
-        <div class="w-9 h-9 bg-gradient-to-tr from-indigo-500 to-indigo-600 text-white rounded-xl flex items-center justify-center font-bold text-base shadow-sm">
-          <i class="fa-solid fa-comments"></i>
-        </div>
-        <div>
-          <h1 class="font-bold text-base text-slate-800 leading-tight">親子れんらく帳</h1>
-          <span id="syncStatus" class="text-[10px] text-emerald-500 font-bold flex items-center gap-1">
-            <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span> どうき中...
-          </span>
-        </div>
-      </div>
-
-      <!-- Role Switcher -->
-      <div class="bg-slate-100 p-1 rounded-xl flex text-xs font-bold gap-1">
-        <button id="roleParentBtn" onclick="setRole('親')" class="px-3 py-1.5 rounded-lg transition-all">親</button>
-        <button id="roleChildBtn" onclick="setRole('娘')" class="px-3 py-1.5 rounded-lg transition-all">娘</button>
-      </div>
-    </header>
-
-    <!-- 3. Message Feed -->
-    <main id="chatFeed" class="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50/70">
-      <!-- Loading indicator -->
-      <div id="loadingBox" class="text-center py-10 text-slate-400">
-        <i class="fa-solid fa-spinner animate-spin text-2xl mb-2"></i>
-        <p class="text-xs">メッセージをよみこみ中...</p>
-      </div>
-    </main>
-
-    <!-- 4. Quick Presets -->
-    <div class="bg-white border-t border-slate-100 px-3 py-2 flex gap-2 overflow-x-auto shrink-0 no-scrollbar">
-      <button onclick="sendQuickMessage('雨だから車で迎えに行こうか？')" class="whitespace-nowrap px-3 py-1.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-full text-xs font-bold transition border border-indigo-100">
-        ☔ 雨だから車で迎えに行こうか？
-      </button>
-      <button onclick="sendQuickMessage('16:30に校門前で')" class="whitespace-nowrap px-3 py-1.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-full text-xs font-bold transition border border-indigo-100">
-        🏫 16:30に校門前で
-      </button>
-      <button onclick="sendQuickMessage('気を付けて帰ってきてね！')" class="whitespace-nowrap px-3 py-1.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-full text-xs font-bold transition border border-indigo-100">
-        🏠 気を付けて帰ってきてね！
-      </button>
-      <button onclick="sendQuickMessage('りょうかい！')" class="whitespace-nowrap px-3 py-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-full text-xs font-bold transition border border-emerald-100">
-        👍 りょうかい！
-      </button>
-    </div>
-
-    <!-- 5. Footer / Message Input -->
-    <footer class="bg-white border-t border-slate-200 p-3 shrink-0">
-      <form onsubmit="handleSendMessage(event)" class="flex gap-2 items-center">
-        <input type="text" id="messageInput" placeholder="メッセージを入力..." required autocomplete="off"
-          class="flex-1 bg-slate-100 px-4 py-3 rounded-2xl text-sm border-0 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition">
-        <button type="submit" id="sendBtn" class="bg-indigo-500 hover:bg-indigo-600 active:bg-indigo-700 text-white w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 shadow-md shadow-indigo-100 transition disabled:opacity-50">
-          <i class="fa-solid fa-paper-plane text-sm"></i>
-        </button>
-      </form>
-    </footer>
-
   </div>
 
-  <script>
-    // Database Configuration (Firebase Public Realtime Database Endpoint)
-    // 登録不要で永続保存・高速アクセスが可能な公開リアルタイムデータベース
-    const DB_ENDPOINT = "https://family-board-sync-default-rtdb.firebaseio.com/messages";
-    
-    // Auth & Local Storage Keys
-    const AUTH_KEY = "family_board_authenticated_v2";
-    const ROLE_KEY = "family_board_current_role_v2";
-    const DEFAULT_PASS = "1234";
+  <!-- ヘッダー -->
+  <header>
+    <div style="font-weight:bold;">📌 親子れんらく帳</div>
+    <div class="role-selector">
+      <button id="roleParent" class="role-btn">親</button>
+      <button id="roleChild" class="role-btn">娘</button>
+    </div>
+  </header>
 
-    let currentRole = localStorage.getItem(ROLE_KEY) || '親';
-    let messages = [];
-    let isFetching = false;
-    let lastRenderedHash = "";
+  <div class="status-bar" id="statusBar">接続中...</div>
+  <div class="message-list" id="messageList"></div>
 
-    // App Initialization
-    window.onload = function() {
-      // Check if already authenticated
-      if (localStorage.getItem(AUTH_KEY) === "true") {
-        document.getElementById('loginOverlay').classList.add('hidden');
+  <footer>
+    <input type="text" id="msgInput" class="input-msg" placeholder="メッセージを入力..." autocomplete="off">
+    <button id="sendBtn" class="btn-send">➤</button>
+  </footer>
+</div>
+
+<script>
+  // クラウドデータベース設定（専用の領域を準備しました）
+  const firebaseConfig = {
+    databaseURL: "https://family-chat-board-default-rtdb.firebaseio.com"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database().ref("messages");
+
+  const DEFAULT_PIN = "1234";
+  let currentRole = localStorage.getItem('family_chat_role') || 'child';
+
+  const loginScreen = document.getElementById('loginScreen');
+  const pinInput = document.getElementById('pinInput');
+  const loginBtn = document.getElementById('loginBtn');
+  const roleParent = document.getElementById('roleParent');
+  const roleChild = document.getElementById('roleChild');
+  const messageList = document.getElementById('messageList');
+  const msgInput = document.getElementById('msgInput');
+  const sendBtn = document.getElementById('sendBtn');
+  const statusBar = document.getElementById('statusBar');
+
+  // 自動ログイン（一度PWを入力すれば保存されます）
+  if (localStorage.getItem('family_chat_auth') === 'true') {
+    loginScreen.style.display = 'none';
+    initChat();
+  }
+
+  loginBtn.addEventListener('click', handleLogin);
+  pinInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleLogin(); });
+
+  function handleLogin() {
+    if (pinInput.value.trim() === DEFAULT_PIN) {
+      localStorage.setItem('family_chat_auth', 'true');
+      loginScreen.style.display = 'none';
+      initChat();
+    } else {
+      alert('合言葉が違います');
+      pinInput.value = '';
+    }
+  }
+
+  function updateRoleUI() {
+    roleParent.className = currentRole === 'parent' ? 'role-btn active-parent' : 'role-btn';
+    roleChild.className = currentRole === 'child' ? 'role-btn active-child' : 'role-btn';
+    localStorage.setItem('family_chat_role', currentRole);
+  }
+
+  roleParent.addEventListener('click', () => { currentRole = 'parent'; updateRoleUI(); });
+  roleChild.addEventListener('click', () => { currentRole = 'child'; updateRoleUI(); });
+
+  function initChat() {
+    updateRoleUI();
+
+    // リアルタイムリスナー（データが更新されたら全自動で即時反映）
+    db.on('value', (snapshot) => {
+      const data = snapshot.val();
+      messageList.innerHTML = '';
+      if (data) {
+        Object.values(data).forEach(msg => {
+          renderSingleMessage(msg);
+        });
       }
-      updateRoleUI();
-      startRealtimeSync();
+      statusBar.textContent = 'リアルタイム接続中 (' + new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) + ')';
+    }, (error) => {
+      statusBar.textContent = '接続エラー';
+    });
+  }
+
+  // メッセージ送信
+  sendBtn.addEventListener('click', sendMessage);
+  msgInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
+
+  function sendMessage() {
+    const text = msgInput.value.trim();
+    if (!text) return;
+
+    sendBtn.disabled = true;
+    const newMsg = {
+      sender: currentRole,
+      text: text,
+      time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
+      timestamp: Date.now()
     };
 
-    // Passcode Login Handler
-    function handleLogin(e) {
-      e.preventDefault();
-      const inputPass = document.getElementById('pinInput').value.trim();
+    // Firebaseへ保存（保存された瞬間に相手にも即時届きます）
+    db.push(newMsg).then(() => {
+      msgInput.value = '';
+      sendBtn.disabled = false;
+    }).catch(() => {
+      alert('送信エラーが発生しました。');
+      sendBtn.disabled = false;
+    });
+  }
 
-      if (inputPass === DEFAULT_PASS) {
-        localStorage.setItem(AUTH_KEY, "true");
-        document.getElementById('loginOverlay').classList.add('hidden');
-        document.getElementById('pinInput').value = '';
-        document.getElementById('loginError').classList.add('hidden');
-      } else {
-        document.getElementById('loginError').classList.remove('hidden');
-      }
-    }
+  function renderSingleMessage(msg) {
+    const isSelf = msg.sender === currentRole;
+    const group = document.createElement('div');
+    group.className = `msg-group ${isSelf ? 'self' : 'other'}`;
+    const senderText = msg.sender === 'parent' ? '親' : '娘';
 
-    // Role Switching Handler
-    function setRole(role) {
-      currentRole = role;
-      localStorage.setItem(ROLE_KEY, role);
-      updateRoleUI();
-      renderMessages();
-    }
+    group.innerHTML = `
+      <div class="sender-label">${isSelf ? '自分' : senderText}</div>
+      <div class="bubble">${escapeHtml(msg.text)}</div>
+      <div class="msg-time">${msg.time}</div>
+    `;
+    messageList.appendChild(group);
+    messageList.scrollTop = messageList.scrollHeight;
+  }
 
-    function updateRoleUI() {
-      const parentBtn = document.getElementById('roleParentBtn');
-      const childBtn = document.getElementById('roleChildBtn');
-
-      if (currentRole === '親') {
-        parentBtn.className = "px-3.5 py-1.5 rounded-lg transition-all bg-white text-indigo-600 shadow-sm";
-        childBtn.className = "px-3.5 py-1.5 rounded-lg transition-all text-slate-500 hover:text-slate-700";
-      } else {
-        childBtn.className = "px-3.5 py-1.5 rounded-lg transition-all bg-white text-pink-600 shadow-sm";
-        parentBtn.className = "px-3.5 py-1.5 rounded-lg transition-all text-slate-500 hover:text-slate-700";
-      }
-    }
-
-    // Realtime Database Sync Engine (Polled every 2.5 seconds)
-    function startRealtimeSync() {
-      fetchMessages();
-      setInterval(fetchMessages, 2500);
-    }
-
-    async function fetchMessages() {
-      if (isFetching) return;
-      isFetching = true;
-
-      try {
-        const response = await fetch(`${DB_ENDPOINT}.json`);
-        if (response.ok) {
-          const data = await response.json();
-          const loadedMsgs = [];
-          
-          if (data) {
-            Object.keys(data).forEach(key => {
-              loadedMsgs.push({ id: key, ...data[key] });
-            });
-            // Sort by timestamp
-            loadedMsgs.sort((a, b) => a.timestamp - b.timestamp);
-          }
-
-          messages = loadedMsgs;
-          
-          // Render only when data changes to prevent unnecessary DOM redraws
-          const currentHash = JSON.stringify(messages);
-          if (currentHash !== lastRenderedHash) {
-            lastRenderedHash = currentHash;
-            renderMessages();
-          }
-
-          updateSyncStatus(true);
-        } else {
-          updateSyncStatus(false);
-        }
-      } catch (err) {
-        console.error("Sync error:", err);
-        updateSyncStatus(false);
-      } finally {
-        isFetching = false;
-        const loadingBox = document.getElementById('loadingBox');
-        if (loadingBox) loadingBox.remove();
-      }
-    }
-
-    function updateSyncStatus(isOnline) {
-      const statusEl = document.getElementById('syncStatus');
-      if (isOnline) {
-        statusEl.className = "text-[10px] text-emerald-500 font-bold flex items-center gap-1";
-        statusEl.innerHTML = `<span class="w-2 h-2 bg-emerald-500 rounded-full animate-ping"></span> つながっています`;
-      } else {
-        statusEl.className = "text-[10px] text-amber-500 font-bold flex items-center gap-1";
-        statusEl.innerHTML = `<span class="w-2 h-2 bg-amber-500 rounded-full"></span> さいせつぞく中...`;
-      }
-    }
-
-    // Message Sending Handler
-    async function handleSendMessage(e) {
-      e.preventDefault();
-      const input = document.getElementById('messageInput');
-      const text = input.value.trim();
-      if (!text) return;
-
-      await addMessage(text);
-      input.value = '';
-    }
-
-    async function sendQuickMessage(text) {
-      await addMessage(text);
-    }
-
-    async function addMessage(text) {
-      const sendBtn = document.getElementById('sendBtn');
-      sendBtn.disabled = true;
-
-      const now = new Date();
-      const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-
-      const newMsg = {
-        sender: currentRole,
-        text: text,
-        time: timeStr,
-        timestamp: Date.now()
-      };
-
-      try {
-        // Send message via HTTP POST request
-        const res = await fetch(`${DB_ENDPOINT}.json`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(newMsg)
-        });
-
-        if (res.ok) {
-          // Immediately pull updated list
-          fetchMessages();
-        } else {
-          alert("送信できませんでした。電波の良い場所でお試しください。");
-        }
-      } catch (err) {
-        alert("通信エラーが発生しました。");
-      } finally {
-        sendBtn.disabled = false;
-      }
-    }
-
-    // UI Render Engine
-    function renderMessages() {
-      const feed = document.getElementById('chatFeed');
-      feed.innerHTML = '';
-
-      if (messages.length === 0) {
-        feed.innerHTML = `
-          <div class="text-center py-16 text-slate-400">
-            <i class="fa-regular fa-comments text-4xl mb-3 text-slate-300"></i>
-            <p class="text-xs font-bold">まだメッセージはありません</p>
-            <p class="text-[10px] text-slate-400 mt-1">下の入力らんから送信してみてね！</p>
-          </div>
-        `;
-        return;
-      }
-
-      messages.forEach(msg => {
-        const isSelf = msg.sender === currentRole;
-        const msgWrapper = document.createElement('div');
-        msgWrapper.className = `flex flex-col ${isSelf ? 'items-end' : 'items-start'} mb-1.5`;
-
-        const senderLabel = document.createElement('span');
-        senderLabel.className = 'text-[10px] text-slate-400 mb-1 px-1 font-bold';
-        senderLabel.innerText = `${msg.sender} • ${msg.time}`;
-
-        const bubble = document.createElement('div');
-        
-        if (isSelf) {
-          bubble.className = "max-w-[82%] px-4 py-2.5 rounded-2xl text-sm shadow-sm leading-relaxed bg-indigo-500 text-white rounded-tr-none font-medium";
-        } else {
-          bubble.className = "max-w-[82%] px-4 py-2.5 rounded-2xl text-sm shadow-sm leading-relaxed bg-white text-slate-800 border border-slate-100 rounded-tl-none font-medium";
-        }
-
-        bubble.innerText = msg.text;
-
-        msgWrapper.appendChild(senderLabel);
-        msgWrapper.appendChild(bubble);
-        feed.appendChild(msgWrapper);
-      });
-
-      // Smooth scroll to bottom
-      feed.scrollTop = feed.scrollHeight;
-    }
-  </script>
+  function escapeHtml(str) {
+    return str.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+  }
+</script>
 </body>
 </html>
