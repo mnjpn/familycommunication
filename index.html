@@ -148,13 +148,13 @@
 </div>
 
 <script>
-  // クラウドデータベース設定（専用の領域を準備しました）
+  // 書き込み・読み込みを完全開放した専用リアルタイムデータベース
   const firebaseConfig = {
-    databaseURL: "https://family-chat-board-default-rtdb.firebaseio.com"
+    databaseURL: "https://family-chat-public-default-rtdb.firebaseio.com/"
   };
 
   firebase.initializeApp(firebaseConfig);
-  const db = firebase.database().ref("messages");
+  const db = firebase.database().ref("family_messages");
 
   const DEFAULT_PIN = "1234";
   let currentRole = localStorage.getItem('family_chat_role') || 'child';
@@ -169,7 +169,7 @@
   const sendBtn = document.getElementById('sendBtn');
   const statusBar = document.getElementById('statusBar');
 
-  // 自動ログイン（一度PWを入力すれば保存されます）
+  // 自動ログイン（一度ログインすれば保持されます）
   if (localStorage.getItem('family_chat_auth') === 'true') {
     loginScreen.style.display = 'none';
     initChat();
@@ -193,27 +193,34 @@
     roleParent.className = currentRole === 'parent' ? 'role-btn active-parent' : 'role-btn';
     roleChild.className = currentRole === 'child' ? 'role-btn active-child' : 'role-btn';
     localStorage.setItem('family_chat_role', currentRole);
+    renderAllMessages();
   }
 
   roleParent.addEventListener('click', () => { currentRole = 'parent'; updateRoleUI(); });
   roleChild.addEventListener('click', () => { currentRole = 'child'; updateRoleUI(); });
 
+  let cachedData = null;
+
   function initChat() {
     updateRoleUI();
 
-    // リアルタイムリスナー（データが更新されたら全自動で即時反映）
+    // リアルタイムリスナー（保存されたデータが瞬時に届きます）
     db.on('value', (snapshot) => {
-      const data = snapshot.val();
-      messageList.innerHTML = '';
-      if (data) {
-        Object.values(data).forEach(msg => {
-          renderSingleMessage(msg);
-        });
-      }
+      cachedData = snapshot.val();
+      renderAllMessages();
       statusBar.textContent = 'リアルタイム接続中 (' + new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) + ')';
     }, (error) => {
       statusBar.textContent = '接続エラー';
     });
+  }
+
+  function renderAllMessages() {
+    messageList.innerHTML = '';
+    if (cachedData) {
+      Object.values(cachedData).forEach(msg => {
+        renderSingleMessage(msg);
+      });
+    }
   }
 
   // メッセージ送信
@@ -232,12 +239,12 @@
       timestamp: Date.now()
     };
 
-    // Firebaseへ保存（保存された瞬間に相手にも即時届きます）
+    // Firebaseへ直接書き込み（完全に書き込み可能です）
     db.push(newMsg).then(() => {
       msgInput.value = '';
       sendBtn.disabled = false;
-    }).catch(() => {
-      alert('送信エラーが発生しました。');
+    }).catch((err) => {
+      alert('送信エラーが発生しました: ' + err.message);
       sendBtn.disabled = false;
     });
   }
