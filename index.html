@@ -1,272 +1,261 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>親子れんらく帳</title>
-  <!-- Firebase (公式ライブラリ) -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-  <style>
-    :root {
-      --bg-color: #f0f2f5;
-      --card-bg: #ffffff;
-      --primary: #4f46e5;
-      --parent-color: #ec4899;
-      --child-color: #3b82f6;
-      --text-main: #1f2937;
-      --text-sub: #6b7280;
-      --border-color: #e5e7eb;
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>うちの連絡帳</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #EAF1F5;
+    --ink: #1F2A36;
+    --muted: #6B7A88;
+    --mine: #FFE7A3;      /* 自分：付箋の黄色 */
+    --theirs: #FFFFFF;    /* 相手：白い紙 */
+    --accent: #2F6F9E;    /* 制服の紺 */
+    --line: #C9D6DF;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #16202A; --ink: #E8EEF3; --muted: #93A3B1;
+      --mine: #6B5A22; --theirs: #25313D; --accent: #7FB3DA; --line: #33414E;
     }
+  }
+  *, *::before, *::after { box-sizing: inherit; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--paper); color: var(--ink);
+    font-family: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Hiragino Sans", sans-serif;
+    font-size: 17px; line-height: 1.6;
+  }
+  button, input, textarea { font: inherit; color: inherit; }
+  :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  [hidden] { display: none !important; }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  /* ログイン */
+  #login { height: 100%; display: grid; place-items: center; padding: 24px; }
+  .login-box { width: 100%; max-width: 340px; }
+  .login-box h1 { font-size: 30px; margin: 0 0 4px; letter-spacing: .04em; }
+  .login-box p { margin: 0 0 24px; color: var(--muted); }
+  .who { display: flex; gap: 10px; margin-bottom: 14px; }
+  .who button {
+    flex: 1; padding: 14px 8px; border-radius: 14px; cursor: pointer;
+    border: 2px solid var(--line); background: var(--theirs); font-weight: 700;
+  }
+  .who button[aria-pressed="true"] { border-color: var(--accent); background: var(--mine); }
+  #pw {
+    width: 100%; padding: 14px; border-radius: 14px;
+    border: 2px solid var(--line); background: var(--theirs);
+  }
+  #loginBtn {
+    width: 100%; margin-top: 14px; padding: 14px; border: 0; border-radius: 14px;
+    background: var(--accent); color: #fff; font-weight: 700; cursor: pointer;
+  }
+  #loginErr { color: #C0392B; min-height: 1.6em; margin-top: 10px; font-size: 15px; }
 
-    body {
-      background-color: var(--bg-color);
-      color: var(--text-main);
-      display: flex;
-      justify-content: center;
-      height: 100vh;
-      height: 100dvh;
-      overflow: hidden;
-    }
+  /* チャット */
+  #chat { height: 100%; display: flex; flex-direction: column; max-width: 720px; margin: 0 auto; }
+  header {
+    display: flex; align-items: baseline; justify-content: space-between;
+    padding: 12px 16px; border-bottom: 1px solid var(--line);
+  }
+  header h1 { font-size: 20px; margin: 0; }
+  #logout { background: none; border: 0; color: var(--muted); cursor: pointer; font-size: 14px; }
+  #log { flex: 1; overflow-y: auto; padding: 16px; }
+  .empty { color: var(--muted); text-align: center; margin-top: 30%; }
+  .day { text-align: center; color: var(--muted); font-size: 13px; margin: 18px 0 8px; }
+  .msg { display: flex; flex-direction: column; margin: 6px 0; align-items: flex-start; }
+  .msg.me { align-items: flex-end; }
+  .bubble {
+    max-width: 80%; padding: 8px 14px; border-radius: 4px 16px 16px 16px;
+    background: var(--theirs); white-space: pre-wrap; word-break: break-word;
+    box-shadow: 0 1px 0 var(--line);
+  }
+  .msg.me .bubble { background: var(--mine); border-radius: 16px 4px 16px 16px; }
+  .meta { font-size: 12px; color: var(--muted); margin: 2px 4px 0; }
 
-    #app {
-      width: 100%;
-      max-width: 500px;
-      height: 100%;
-      background-color: var(--card-bg);
-      display: flex;
-      flex-direction: column;
-      position: relative;
-    }
-
-    .login-overlay {
-      position: absolute;
-      top: 0; left: 0; width: 100%; height: 100%;
-      background-color: var(--card-bg);
-      z-index: 100;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      padding: 24px;
-    }
-
-    .login-box { width: 100%; max-width: 320px; text-align: center; }
-
-    .pin-input {
-      width: 100%; padding: 14px; font-size: 18px; text-align: center;
-      letter-spacing: 4px; border: 2px solid var(--border-color);
-      border-radius: 12px; margin-bottom: 16px; outline: none;
-    }
-
-    .btn-login {
-      width: 100%; padding: 14px; background-color: var(--primary);
-      color: white; border: none; border-radius: 12px; font-size: 16px;
-      font-weight: 600; cursor: pointer;
-    }
-
-    header {
-      padding: 12px 16px; border-bottom: 1px solid var(--border-color);
-      display: flex; justify-content: space-between; align-items: center;
-    }
-
-    .role-selector { display: flex; background: #f3f4f6; padding: 3px; border-radius: 20px; }
-    .role-btn {
-      padding: 6px 14px; font-size: 12px; font-weight: 600; border: none;
-      border-radius: 16px; background: transparent; color: var(--text-sub); cursor: pointer;
-    }
-    .role-btn.active-parent { background: var(--parent-color); color: white; }
-    .role-btn.active-child { background: var(--child-color); color: white; }
-
-    .status-bar { font-size: 10px; text-align: center; color: var(--text-sub); padding: 4px; background: #f3f4f6; }
-
-    .message-list {
-      flex: 1; padding: 16px; overflow-y: auto; display: flex;
-      flex-direction: column; gap: 12px; background: #f9fafb;
-    }
-
-    .msg-group { display: flex; flex-direction: column; max-width: 80%; }
-    .msg-group.self { align-self: flex-end; align-items: flex-end; }
-    .msg-group.other { align-self: flex-start; align-items: flex-start; }
-
-    .sender-label { font-size: 11px; color: var(--text-sub); margin-bottom: 4px; }
-    .bubble {
-      padding: 10px 14px; border-radius: 16px; font-size: 14px; line-height: 1.4;
-      word-break: break-word;
-    }
-    .msg-group.self .bubble { background-color: var(--primary); color: white; border-bottom-right-radius: 4px; }
-    .msg-group.other .bubble { background-color: #ffffff; color: var(--text-main); border: 1px solid var(--border-color); border-bottom-left-radius: 4px; }
-    .msg-time { font-size: 10px; color: #9ca3af; margin-top: 4px; }
-
-    footer {
-      padding: 12px 16px; background-color: #ffffff; border-top: 1px solid var(--border-color);
-      display: flex; gap: 8px; align-items: center;
-    }
-
-    .input-msg {
-      flex: 1; padding: 12px 16px; border: 1px solid var(--border-color);
-      border-radius: 24px; font-size: 14px; outline: none; background-color: #f9fafb;
-    }
-
-    .btn-send {
-      width: 40px; height: 40px; border-radius: 50%; background-color: var(--primary);
-      color: white; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer;
-    }
-  </style>
+  .quick { display: flex; gap: 8px; overflow-x: auto; padding: 8px 12px 0; }
+  .quick button {
+    flex: none; padding: 6px 12px; border-radius: 999px; cursor: pointer;
+    border: 1px solid var(--line); background: var(--theirs); font-size: 14px;
+  }
+  form { display: flex; gap: 8px; padding: 10px 12px 12px; }
+  #text {
+    flex: 1; resize: none; padding: 10px 14px; border-radius: 18px;
+    border: 2px solid var(--line); background: var(--theirs); height: 46px;
+  }
+  #send {
+    padding: 0 18px; border: 0; border-radius: 18px; background: var(--accent);
+    color: #fff; font-weight: 700; cursor: pointer;
+  }
+  #send:disabled { opacity: .5; }
+</style>
 </head>
 <body>
 
-<div id="app">
-  <!-- ログイン画面 -->
-  <div id="loginScreen" class="login-overlay">
-    <div class="login-box">
-      <h2 style="margin-bottom:8px;">📌 親子れんらく帳</h2>
-      <p style="font-size:12px; color:#666; margin-bottom:20px;">合言葉を入力してください</p>
-      <input type="password" id="pinInput" class="pin-input" placeholder="••••" maxlength="8">
-      <button id="loginBtn" class="btn-login">入る</button>
-    </div>
+<div id="login">
+  <div class="login-box">
+    <h1>うちの連絡帳</h1>
+    <p>だれが使う？</p>
+    <div class="who" id="who"></div>
+    <input id="pw" type="password" placeholder="パスワード" autocomplete="current-password">
+    <button id="loginBtn">入る</button>
+    <div id="loginErr" role="alert"></div>
   </div>
-
-  <!-- ヘッダー -->
-  <header>
-    <div style="font-weight:bold;">📌 親子れんらく帳</div>
-    <div class="role-selector">
-      <button id="roleParent" class="role-btn">親</button>
-      <button id="roleChild" class="role-btn">娘</button>
-    </div>
-  </header>
-
-  <div class="status-bar" id="statusBar">接続中...</div>
-  <div class="message-list" id="messageList"></div>
-
-  <footer>
-    <input type="text" id="msgInput" class="input-msg" placeholder="メッセージを入力..." autocomplete="off">
-    <button id="sendBtn" class="btn-send">➤</button>
-  </footer>
 </div>
 
-<script>
-  // 書き込み・読み込みを完全開放した専用リアルタイムデータベース
+<div id="chat" hidden>
+  <header>
+    <h1>うちの連絡帳</h1>
+    <button id="logout">ログアウト</button>
+  </header>
+  <div id="log" aria-live="polite"></div>
+  <div class="quick" id="quick"></div>
+  <form id="form">
+    <textarea id="text" placeholder="メッセージ" maxlength="500"></textarea>
+    <button id="send" type="submit">送る</button>
+  </form>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut }
+    from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import { getFirestore, collection, addDoc, query, orderBy, limitToLast, onSnapshot, serverTimestamp }
+    from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  // ▼▼▼ ここを自分の値に書き換える ▼▼▼
   const firebaseConfig = {
-    databaseURL: "https://family-chat-public-default-rtdb.firebaseio.com/"
+  apiKey: "AIzaSyDTlLo6HdNqjS4vlsotdH7uEw1iZuZrAqk",
+  authDomain: "family-chat-43a6d.firebaseapp.com",
+  projectId: "family-chat-43a6d",
+  storageBucket: "family-chat-43a6d.firebasestorage.app",
+  messagingSenderId: "102848045527",
+  appId: "1:102848045527:web:17379e769a32af4673ab92”,
   };
+  // Firebaseで作ったユーザーのメールアドレスと表示名
+  const MEMBERS = [
+    { name: “父”, email: “masato. Nogami.1028@gmail.com" },
+    { name: “母”,   email: “harumiaoki@gmail.com" },
+    { name: “Canon”,   email: “canon@gmail.com" },
+  ];
+  // よく使う定型文（タップで入力欄に入る）
+  const QUICK = ["了解！", "今から帰る", "迎えに来てほしい", "雨だから車で迎えに行こうか？", "16:30に校門前で"];
+  // ▲▲▲ ここまで ▲▲▲
 
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.database().ref("family_messages");
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  const $ = (id) => document.getElementById(id);
 
-  const DEFAULT_PIN = "1234";
-  let currentRole = localStorage.getItem('family_chat_role') || 'child';
-
-  const loginScreen = document.getElementById('loginScreen');
-  const pinInput = document.getElementById('pinInput');
-  const loginBtn = document.getElementById('loginBtn');
-  const roleParent = document.getElementById('roleParent');
-  const roleChild = document.getElementById('roleChild');
-  const messageList = document.getElementById('messageList');
-  const msgInput = document.getElementById('msgInput');
-  const sendBtn = document.getElementById('sendBtn');
-  const statusBar = document.getElementById('statusBar');
-
-  // 自動ログイン（一度ログインすれば保持されます）
-  if (localStorage.getItem('family_chat_auth') === 'true') {
-    loginScreen.style.display = 'none';
-    initChat();
-  }
-
-  loginBtn.addEventListener('click', handleLogin);
-  pinInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleLogin(); });
-
-  function handleLogin() {
-    if (pinInput.value.trim() === DEFAULT_PIN) {
-      localStorage.setItem('family_chat_auth', 'true');
-      loginScreen.style.display = 'none';
-      initChat();
-    } else {
-      alert('合言葉が違います');
-      pinInput.value = '';
-    }
-  }
-
-  function updateRoleUI() {
-    roleParent.className = currentRole === 'parent' ? 'role-btn active-parent' : 'role-btn';
-    roleChild.className = currentRole === 'child' ? 'role-btn active-child' : 'role-btn';
-    localStorage.setItem('family_chat_role', currentRole);
-    renderAllMessages();
-  }
-
-  roleParent.addEventListener('click', () => { currentRole = 'parent'; updateRoleUI(); });
-  roleChild.addEventListener('click', () => { currentRole = 'child'; updateRoleUI(); });
-
-  let cachedData = null;
-
-  function initChat() {
-    updateRoleUI();
-
-    // リアルタイムリスナー（保存されたデータが瞬時に届きます）
-    db.on('value', (snapshot) => {
-      cachedData = snapshot.val();
-      renderAllMessages();
-      statusBar.textContent = 'リアルタイム接続中 (' + new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) + ')';
-    }, (error) => {
-      statusBar.textContent = '接続エラー';
-    });
-  }
-
-  function renderAllMessages() {
-    messageList.innerHTML = '';
-    if (cachedData) {
-      Object.values(cachedData).forEach(msg => {
-        renderSingleMessage(msg);
-      });
-    }
-  }
-
-  // メッセージ送信
-  sendBtn.addEventListener('click', sendMessage);
-  msgInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
-
-  function sendMessage() {
-    const text = msgInput.value.trim();
-    if (!text) return;
-
-    sendBtn.disabled = true;
-    const newMsg = {
-      sender: currentRole,
-      text: text,
-      time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
-      timestamp: Date.now()
+  // ログイン画面
+  let selected = null;
+  MEMBERS.forEach((m) => {
+    const b = document.createElement("button");
+    b.textContent = m.name;
+    b.setAttribute("aria-pressed", "false");
+    b.onclick = () => {
+      selected = m;
+      [...$("who").children].forEach((c) => c.setAttribute("aria-pressed", String(c === b)));
+      $("pw").focus();
     };
+    $("who").appendChild(b);
+  });
 
-    // Firebaseへ直接書き込み（完全に書き込み可能です）
-    db.push(newMsg).then(() => {
-      msgInput.value = '';
-      sendBtn.disabled = false;
-    }).catch((err) => {
-      alert('送信エラーが発生しました: ' + err.message);
-      sendBtn.disabled = false;
+  async function login() {
+    $("loginErr").textContent = "";
+    if (!selected) { $("loginErr").textContent = "だれが使うかを選んでください。"; return; }
+    try {
+      await signInWithEmailAndPassword(auth, selected.email, $("pw").value);
+      $("pw").value = "";
+    } catch {
+      $("loginErr").textContent = "パスワードが違います。もう一度入れてください。";
+    }
+  }
+  $("loginBtn").onclick = login;
+  $("pw").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.isComposing) login(); });
+  $("logout").onclick = () => signOut(auth);
+
+  // 定型文
+  QUICK.forEach((t) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.textContent = t;
+    b.onclick = () => { $("text").value = t; $("text").focus(); };
+    $("quick").appendChild(b);
+  });
+
+  // メッセージ表示
+  let unsub = null;
+  const nameOf = (email) => (MEMBERS.find((m) => m.email === email) || {}).name || "?";
+  const fmtDay = (d) => `${d.getMonth() + 1}月${d.getDate()}日（${"日月火水木金土"[d.getDay()]}）`;
+  const fmtTime = (d) => `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
+
+  function render(docs, me) {
+    const log = $("log");
+    log.innerHTML = "";
+    if (docs.length === 0) {
+      log.innerHTML = '<p class="empty">まだメッセージはありません。下の欄から送れます。</p>';
+      return;
+    }
+    let lastDay = "";
+    docs.forEach((d) => {
+      const m = d.data();
+      const date = m.createdAt ? m.createdAt.toDate() : new Date();
+      const day = fmtDay(date);
+      if (day !== lastDay) {
+        const s = document.createElement("div");
+        s.className = "day"; s.textContent = day;
+        log.appendChild(s); lastDay = day;
+      }
+      const row = document.createElement("div");
+      row.className = "msg" + (m.sender === me ? " me" : "");
+      const bubble = document.createElement("div");
+      bubble.className = "bubble"; bubble.textContent = m.text;
+      const meta = document.createElement("div");
+      meta.className = "meta";
+      meta.textContent = (m.sender === me ? "" : nameOf(m.sender) + "  ") + fmtTime(date);
+      row.append(bubble, meta);
+      log.appendChild(row);
     });
+    log.scrollTop = log.scrollHeight;
   }
 
-  function renderSingleMessage(msg) {
-    const isSelf = msg.sender === currentRole;
-    const group = document.createElement('div');
-    group.className = `msg-group ${isSelf ? 'self' : 'other'}`;
-    const senderText = msg.sender === 'parent' ? '親' : '娘';
+  onAuthStateChanged(auth, (user) => {
+    if (unsub) { unsub(); unsub = null; }
+    $("login").hidden = !!user;
+    $("chat").hidden = !user;
+    if (!user) return;
+    const q = query(collection(db, "messages"), orderBy("createdAt"), limitToLast(200));
+    unsub = onSnapshot(q, (snap) => render(snap.docs, user.email),
+      () => { $("log").innerHTML = '<p class="empty">読み込めませんでした。通信状態を確認して、ページを再読み込みしてください。</p>'; });
+  });
 
-    group.innerHTML = `
-      <div class="sender-label">${isSelf ? '自分' : senderText}</div>
-      <div class="bubble">${escapeHtml(msg.text)}</div>
-      <div class="msg-time">${msg.time}</div>
-    `;
-    messageList.appendChild(group);
-    messageList.scrollTop = messageList.scrollHeight;
+  // 送信
+  async function send(e) {
+    e && e.preventDefault();
+    const text = $("text").value.trim();
+    if (!text) return;
+    $("send").disabled = true;
+    try {
+      await addDoc(collection(db, "messages"), {
+        text, sender: auth.currentUser.email, createdAt: serverTimestamp(),
+      });
+      $("text").value = "";
+    } catch {
+      alert("送れませんでした。通信状態を確認して、もう一度送ってください。");
+    } finally {
+      $("send").disabled = false;
+    }
   }
-
-  function escapeHtml(str) {
-    return str.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
-  }
+  $("form").addEventListener("submit", send);
+  $("text").addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey && !e.isComposing) send(e);
+  });
 </script>
 </body>
 </html>
