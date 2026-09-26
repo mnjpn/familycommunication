@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>親子れんらく帳</title>
+  <style>
+    :root {
+      --bg-color: #f0f2f5;
+      --card-bg: #ffffff;
+      --primary: #4f46e5;
+      --primary-hover: #4338ca;
+      --parent-color: #ec4899;
+      --child-color: #3b82f6;
+      --text-main: #1f2937;
+      --text-sub: #6b7280;
+      --border-color: #e5e7eb;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      display: flex;
+      justify-content: center;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+    }
+
+    #app {
+      width: 100%;
+      max-width: 500px;
+      height: 100%;
+      background-color: var(--card-bg);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      box-shadow: 0 0 20px rgba(0,0,0,0.05);
+    }
+
+    /* ログイン画面 */
+    .login-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: var(--card-bg);
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 24px;
+      text-align: center;
+    }
+
+    .login-box {
+      width: 100%;
+      max-width: 320px;
+    }
+
+    .icon-badge {
+      width: 64px;
+      height: 64px;
+      background: #eef2ff;
+      color: var(--primary);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 16px;
+      font-size: 28px;
+    }
+
+    .login-title {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .login-desc {
+      font-size: 13px;
+      color: var(--text-sub);
+      margin-bottom: 24px;
+    }
+
+    .pin-input {
+      width: 100%;
+      padding: 14px;
+      font-size: 18px;
+      text-align: center;
+      letter-spacing: 4px;
+      border: 2px solid var(--border-color);
+      border-radius: 12px;
+      margin-bottom: 16px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .pin-input:focus {
+      border-color: var(--primary);
+    }
+
+    .btn-login {
+      width: 100%;
+      padding: 14px;
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    /* ヘッダー */
+    header {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background-color: #ffffff;
+      z-index: 10;
+    }
+
+    .header-title {
+      font-size: 16px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .role-selector {
+      display: flex;
+      background: #f3f4f6;
+      padding: 3px;
+      border-radius: 20px;
+    }
+
+    .role-btn {
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      border: none;
+      border-radius: 16px;
+      background: transparent;
+      color: var(--text-sub);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .role-btn.active-parent {
+      background: var(--parent-color);
+      color: white;
+    }
+
+    .role-btn.active-child {
+      background: var(--child-color);
+      color: white;
+    }
+
+    /* メッセージエリア */
+    .message-list {
+      flex: 1;
+      padding: 16px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background: #f9fafb;
+    }
+
+    .msg-group {
+      display: flex;
+      flex-direction: column;
+      max-width: 80%;
+    }
+
+    .msg-group.self {
+      align-self: flex-end;
+      align-items: flex-end;
+    }
+
+    .msg-group.other {
+      align-self: flex-start;
+      align-items: flex-start;
+    }
+
+    .sender-label {
+      font-size: 11px;
+      color: var(--text-sub);
+      margin-bottom: 4px;
+      padding: 0 4px;
+    }
+
+    .bubble {
+      padding: 10px 14px;
+      border-radius: 16px;
+      font-size: 14px;
+      line-height: 1.4;
+      word-break: break-word;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+
+    .msg-group.self .bubble {
+      background-color: var(--primary);
+      color: white;
+      border-bottom-right-radius: 4px;
+    }
+
+    .msg-group.other .bubble {
+      background-color: #ffffff;
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      border-bottom-left-radius: 4px;
+    }
+
+    .msg-time {
+      font-size: 10px;
+      color: #9ca3af;
+      margin-top: 4px;
+      padding: 0 4px;
+    }
+
+    /* フッター・入力欄 */
+    footer {
+      padding: 12px 16px;
+      background-color: #ffffff;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .input-msg {
+      flex: 1;
+      padding: 12px 16px;
+      border: 1px solid var(--border-color);
+      border-radius: 24px;
+      font-size: 14px;
+      outline: none;
+      background-color: #f9fafb;
+    }
+
+    .input-msg:focus {
+      background-color: #ffffff;
+      border-color: var(--primary);
+    }
+
+    .btn-send {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .btn-send:disabled {
+      background-color: #d1d5db;
+      cursor: not-allowed;
+    }
+
+    .status-bar {
+      font-size: 10px;
+      text-align: center;
+      color: var(--text-sub);
+      padding: 2px;
+      background: #f3f4f6;
+    }
+  </style>
+</head>
+<body>
+
+<div id="app">
+  <!-- ログイン画面 -->
+  <div id="loginScreen" class="login-overlay">
+    <div class="login-box">
+      <div class="icon-badge">🔒</div>
+      <div class="login-title">親子れんらく帳</div>
+      <div class="login-desc">合言葉を入力してください</div>
+      <input type="password" id="pinInput" class="pin-input" placeholder="••••" maxlength="8" inputmode="numeric">
+      <button id="loginBtn" class="btn-login">入る</button>
+    </div>
+  </div>
+
+  <!-- ヘッダー -->
+  <header>
+    <div class="header-title">📌 親子れんらく帳</div>
+    <div class="role-selector">
+      <button id="roleParent" class="role-btn">親</button>
+      <button id="roleChild" class="role-btn">娘</button>
+    </div>
+  </header>
+
+  <!-- ステータス -->
+  <div class="status-bar" id="statusBar">接続中...</div>
+
+  <!-- メッセージリスト -->
+  <div class="message-list" id="messageList"></div>
+
+  <!-- 入力フォーム -->
+  <footer>
+    <input type="text" id="msgInput" class="input-msg" placeholder="メッセージを入力..." autocomplete="off">
+    <button id="sendBtn" class="btn-send">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+    </button>
+  </footer>
+</div>
+
+<script>
+  // JSONBin.ioの無料パブリックバケットを利用（設定不要で即動作します）
+  const BIN_ID = '67123aa1ad19ca34f8bb64b5'; // 共有ストレージID
+  const API_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+
+  // 初期設定
+  const DEFAULT_PIN = "1234";
+  let currentRole = localStorage.getItem('family_chat_role') || 'child';
+  let messages = [];
+  let isFetching = false;
+
+  // DOM要素
+  const loginScreen = document.getElementById('loginScreen');
+  const pinInput = document.getElementById('pinInput');
+  const loginBtn = document.getElementById('loginBtn');
+  const roleParent = document.getElementById('roleParent');
+  const roleChild = document.getElementById('roleChild');
+  const messageList = document.getElementById('messageList');
+  const msgInput = document.getElementById('msgInput');
+  const sendBtn = document.getElementById('sendBtn');
+  const statusBar = document.getElementById('statusBar');
+
+  // 自動ログインチェック（一度PWを入力すれば保存されます）
+  if (localStorage.getItem('family_chat_auth') === 'true') {
+    loginScreen.style.display = 'none';
+    initChat();
+  }
+
+  // ログイン処理
+  loginBtn.addEventListener('click', handleLogin);
+  pinInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') handleLogin(); });
+
+  function handleLogin() {
+    const pin = pinInput.value.trim();
+    if (pin === DEFAULT_PIN || pin === localStorage.getItem('custom_pin')) {
+      localStorage.setItem('family_chat_auth', 'true');
+      loginScreen.style.display = 'none';
+      initChat();
+    } else {
+      alert('合言葉が違います');
+      pinInput.value = '';
+    }
+  }
+
+  // 役割切り替え
+  function updateRoleUI() {
+    if (currentRole === 'parent') {
+      roleParent.className = 'role-btn active-parent';
+      roleChild.className = 'role-btn';
+    } else {
+      roleParent.className = 'role-btn';
+      roleChild.className = 'role-btn active-child';
+    }
+    localStorage.setItem('family_chat_role', currentRole);
+    renderMessages();
+  }
+
+  roleParent.addEventListener('click', () => { currentRole = 'parent'; updateRoleUI(); });
+  roleChild.addEventListener('click', () => { currentRole = 'child'; updateRoleUI(); });
+
+  // 初期化＆定期自動更新（5秒ごとに最新投稿を取得）
+  function initChat() {
+    updateRoleUI();
+    fetchMessages();
+    setInterval(fetchMessages, 5000); 
+  }
+
+  // サーバーからデータ取得
+  async function fetchMessages() {
+    if (isFetching) return;
+    isFetching = true;
+    try {
+      const res = await fetch(`${API_URL}/latest?meta=false`);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.messages)) {
+          messages = data.messages;
+          renderMessages();
+          statusBar.textContent = '同期完了 (' + new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) + ')';
+        }
+      }
+    } catch (e) {
+      statusBar.textContent = '通信エラー（自動再接続中...）';
+    } finally {
+      isFetching = false;
+    }
+  }
+
+  // メッセージ送信
+  sendBtn.addEventListener('click', sendMessage);
+  msgInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
+
+  async function sendMessage() {
+    const text = msgInput.value.trim();
+    if (!text) return;
+
+    sendBtn.disabled = true;
+    const newMsg = {
+      id: Date.now(),
+      sender: currentRole,
+      text: text,
+      time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+    };
+
+    messages.push(newMsg);
+    renderMessages();
+    msgInput.value = '';
+
+    try {
+      await fetch(API_URL, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: messages })
+      });
+      statusBar.textContent = '送信完了';
+    } catch (e) {
+      alert('送信に失敗しました。電波の良い場所でお試しください。');
+    } finally {
+      sendBtn.disabled = false;
+    }
+  }
+
+  // メッセージ描画
+  function renderMessages() {
+    messageList.innerHTML = '';
+    messages.forEach(msg => {
+      const isSelf = msg.sender === currentRole;
+      const group = document.createElement('div');
+      group.className = `msg-group ${isSelf ? 'self' : 'other'}`;
+
+      const senderText = msg.sender === 'parent' ? '親' : '娘';
+      
+      group.innerHTML = `
+        <div class="sender-label">${isSelf ? '自分' : senderText}</div>
+        <div class="bubble">${escapeHtml(msg.text)}</div>
+        <div class="msg-time">${msg.time}</div>
+      `;
+      messageList.appendChild(group);
+    });
+    messageList.scrollTop = messageList.scrollHeight;
+  }
+
+  function escapeHtml(str) {
+    return str.replace(/[&<>"']/g, m => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[m]));
+  }
+</script>
+</body>
+</html>
